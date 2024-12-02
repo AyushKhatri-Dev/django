@@ -2849,3 +2849,34 @@ class OrderByTests(SimpleTestCase):
             F("field").asc(nulls_first=False)
         with self.assertRaisesMessage(ValueError, msg):
             F("field").desc(nulls_last=False)
+
+
+def test_order_by_with_outerref_comprehensive(self):
+    # Test simple subtraction using OuterRef in order_by.
+    def test_simple_outerref():
+        inner = Company.objects.annotate(
+            emp_diff=F("num_employees") - OuterRef("num_employees")
+        ).order_by("emp_diff")
+        self.assertQuerysetEqual(list(inner), [...])  # Verify the expected queryset.
+
+    # Test complex expressions with OuterRef in order_by.
+    def test_complex_outerref():
+        inner = Company.objects.annotate(
+            complex_order=ExpressionWrapper(
+                F("num_employees") * OuterRef("num_employees") / 100,
+                output_field=IntegerField(),
+            )
+        ).order_by("complex_order")
+        self.assertQuerysetEqual(list(inner), [...])  
+
+    # Test mixed fields and OuterRef usage in order_by.
+    def test_mixed_ordering():
+        inner = Company.objects.order_by(
+            "name",
+            F("num_employees")
+            - OuterRef("num_employees"),  
+        )
+        self.assertQuerysetEqual(list(inner), [...])  
+    test_simple_outerref()
+    test_complex_outerref()
+    test_mixed_ordering()

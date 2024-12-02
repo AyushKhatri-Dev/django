@@ -2779,3 +2779,22 @@ class JoinPromoter:
         query.promote_joins(to_promote)
         query.demote_joins(to_demote)
         return to_demote
+
+# Resolve OuterRef expressions in order_by clause by cloning and resolving them.
+def resolve_order_by_expressions(self, order_by_expressions):
+    resolved_expressions = []
+    for expr in order_by_expressions:
+        if hasattr(expr, 'contains_outer_reference') and expr.contains_outer_reference():
+            clone = expr.clone()  # Clone the expression to avoid modifying the original.
+            clone.outer_query = self.outer_query  # Set the outer_query to maintain context.
+            resolved = clone.resolve_expression(self)  # Resolve the cloned expression.
+            resolved_expressions.append(resolved)
+        else:
+            resolved_expressions.append(expr)  # Append the expression as is if no OuterRef.
+    return resolved_expressions
+
+# Modify get_compiler to resolve order_by expressions before compiling the query.
+def get_compiler(self, *args, **kwargs):
+    if self.order_by:
+        self.order_by = self.resolve_order_by_expressions(self.order_by)
+    return super().get_compiler(*args, **kwargs)
